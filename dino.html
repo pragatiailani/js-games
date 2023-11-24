@@ -1,86 +1,230 @@
 <script type="module">
-
     import kaboom from "https://unpkg.com/kaboom@3000.0.1/dist/kaboom.mjs";
 
+    // const FLOOR_HEIGHT = 48;
+    // const JUMP_FORCE = 800;
+    // const SPEED = 480;
+
+    // initialize context
     kaboom({
-        background: [141, 183, 255],
-    })
-
-    loadSprite("bean", "/sprites/smiley.png")
-
-    const bean = add([
-        sprite("bean"),
-        // pos(center()),
-        scale(0.1),
-        // rotate(0),
-        // anchor("center"),
-        pos(20, height() - (2*48)),
-        area(),
-        body()
-    ])
-
-    add([
-        rect(width(), 48),
-        pos(0, height() - 48),
-        outline(4),
-        area(),
-        body({ isStatic: true }),
-        color(127, 200, 255),
-    ])
-
-    onKeyPress("space", () => {
-        if (bean.isGrounded()) {
-            bean.jump();
-        }
+        backgroundAudio: true,
+        // background: [141, 183, 255],
     });
 
-    setGravity(1500)
+    loadSprite("background", "/bg/mr bean bg.png");
 
-    // add([
-    //     rect(42, 64),
-    //     area(),
-    //     outline(4),
-    //     pos(width(), height() - 48),
-    //     anchor("botleft"),
-    //     color(255, 180, 255),
-    //     move(LEFT, 240),
-    //     "tree", // add a tag here
-    // ]);
+    // load assets
+    loadSound("bgm", "/sounds/mr bean.mp3");
+    loadSprite("bean", "/sprites/mr bean.png");
+    loadSprite("aunty", "/sprites/mrs wicket.png")
 
-    // loop(1.5, () => {
-    //     // add tree
-    //     add([
-    //         rect(42, rand(24, 64)),
+    const music = play("bgm", {
+        loop: true,
+    });
+
+    const SPEED = 320;
+    const ENEMY_SPEED = 160;
+    const BULLET_SPEED = 800;
+
+    scene("game", () => {
+
+        add([
+            sprite("background"),
+            pos(width() / 2, height() / 2),
+            anchor("center"),
+            scale(1.5),
+            fixed()
+        ]);
+
+        // Add player game object
+        const player = add([
+            sprite("bean"), 
+            pos(80, 80), 
+            area(), 
+            scale(0.4),
+            anchor("center")]);
+
+        const enemy = add([
+            sprite("aunty"),
+            pos(width() - 80, height() - 80),
+            anchor("center"),
+            scale(0.4),
+            // This enemy cycle between 3 states, and start from "idle" state
+            state("move", ["idle", "attack", "move"]),
+        ]);
+
+        // Run the callback once every time we enter "idle" state.
+        // Here we stay "idle" for 0.5 second, then enter "attack" state.
+        enemy.onStateEnter("idle", async () => {
+            await wait(0.5);
+            enemy.enterState("attack");
+        });
+
+        // When we enter "attack" state, we fire a bullet, and enter "move" state after 1 sec
+        enemy.onStateEnter("attack", async () => {
+            // Don't do anything if player doesn't exist anymore
+            if (player.exists()) {
+                const dir = player.pos.sub(enemy.pos).unit();
+
+                add([
+                    pos(enemy.pos),
+                    move(dir, BULLET_SPEED),
+                    rect(12, 12),
+                    area(),
+                    offscreen({ destroy: true }),
+                    anchor("center"),
+                    color(BLUE),
+                    "bullet",
+                ]);
+            }
+
+            await wait(1);
+            enemy.enterState("move");
+        });
+
+        enemy.onStateEnter("move", async () => {
+            await wait(2);
+            enemy.enterState("idle");
+        });
+
+        // Like .onUpdate() which runs every frame, but only runs when the current state is "move"
+        // Here we move towards the player every frame if the current state is "move"
+        enemy.onStateUpdate("move", () => {
+            if (!player.exists()) return;
+            const dir = player.pos.sub(enemy.pos).unit();
+            enemy.move(dir.scale(ENEMY_SPEED));
+        });
+
+        // Taking a bullet makes us disappear
+        player.onCollide("bullet", (bullet) => {
+            destroy(bullet);
+            destroy(player);
+            go("lose");
+            burp();
+            addKaboom(bullet.pos);
+        });
+
+        // Register input handlers & movement
+        onKeyDown("left", () => {
+            player.move(-SPEED, 0);
+        });
+
+        onKeyDown("right", () => {
+            player.move(SPEED, 0);
+        });
+
+        onKeyDown("up", () => {
+            player.move(0, -SPEED);
+        });
+
+        onKeyDown("down", () => {
+            player.move(0, SPEED);
+        });
+    });
+
+    scene("lose", () => {
+        // go back to game with space is pressed
+        onKeyPress("space", () => go("game"));
+        onClick(() => go("game"));
+    });
+
+    go("game");
+
+    // scene("game", () => {
+    //     // define gravity
+    //     setGravity(1600);
+
+    //     // add a game object to screen
+    //     const player = add([
+    //         // list of components
+    //         sprite("bean"),
+    //         pos(80, 40),
+    //         scale(0.3),
     //         area(),
-    //         outline(4),
-    //         pos(width(), height() - 48),
-    //         anchor("botleft"),
-    //         color(255, 180, 255),
-    //         move(LEFT, 240),
-    //         "tree", // add a tag here
+    //         body(),
     //     ]);
+
+    //     // floor
+    //     add([
+    //         rect(width(), FLOOR_HEIGHT),
+    //         outline(4),
+    //         pos(0, height()),
+    //         anchor("botleft"),
+    //         area(),
+    //         body({ isStatic: true }),
+    //         color(127, 200, 255),
+    //     ]);
+
+    //     function jump() {
+    //         if (player.isGrounded()) {
+    //             player.jump(JUMP_FORCE);
+    //         }
+    //     }
+
+    //     // jump when user press space
+    //     onKeyPress("space", jump);
+    //     onClick(jump);
+
+    //     function spawnTree() {
+    //         // add tree obj
+    //         add([
+    //             rect(42, rand(32, 96)),
+    //             area(),
+    //             outline(4),
+    //             pos(width(), height() - FLOOR_HEIGHT),
+    //             anchor("botleft"),
+    //             color(255, 180, 255),
+    //             move(LEFT, SPEED),
+    //             "tree",
+    //         ]);
+
+    //         // wait a random amount of time to spawn next tree
+    //         wait(rand(0.8, 2.3), spawnTree);
+    //     }
+
+    //     // start spawning trees
+    //     spawnTree();
+
+    //     // lose if player collides with any game obj with tag "tree"
+    //     player.onCollide("tree", () => {
+    //         // go to "lose" scene and pass the score
+    //         go("lose", score);
+    //         burp();
+    //         addKaboom(player.pos);
+    //     });
+
+    //     // keep track of score
+    //     let score = 0;
+
+    //     const scoreLabel = add([text(score), pos(24, 24)]);
+
+    //     // increment score every frame
+    //     onUpdate(() => {
+    //         score++;
+    //         scoreLabel.text = score;
+    //     });
     // });
 
-    function spawnTree() {
-        add([
-            rect(42, rand(24, 64)),
-            area(),
-            outline(4),
-            pos(width(), height() - 48),
-            anchor("botleft"),
-            color(255, 180, 255),
-            move(LEFT, 240),
-            "tree", 
-        ]);
-        wait(rand(1, 2.3), () => {
-            spawnTree();
-        });
-    }
+    // scene("lose", (score) => {
+    //     add([
+    //         sprite("bean"),
+    //         pos(width() / 2, height() / 2 - 80),
+    //         scale(2),
+    //         anchor("center"),
+    //     ]);
 
-    spawnTree();
-    bean.onCollide("tree", () => {
-        addKaboom(bean.pos);
-        shake();
-    });
-    
+    //     // display score
+    //     add([
+    //         text(score),
+    //         pos(width() / 2, height() / 2 + 80),
+    //         scale(2),
+    //         anchor("center"),
+    //     ]);
+
+    //     // go back to game with space is pressed
+    //     onKeyPress("space", () => go("game"));
+    //     onClick(() => go("game"));
+    // });
+
+    // go("game");
 </script>
