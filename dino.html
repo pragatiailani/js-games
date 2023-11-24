@@ -1,0 +1,86 @@
+<script type="module">
+
+    import kaboom from "https://unpkg.com/kaboom@3000.0.1/dist/kaboom.mjs";
+
+    kaboom({
+        background: [141, 183, 255],
+    })
+
+    loadSprite("bean", "/sprites/smiley.png")
+
+    const bean = add([
+        sprite("bean"),
+        // pos(center()),
+        scale(0.1),
+        // rotate(0),
+        // anchor("center"),
+        pos(20, height() - (2*48)),
+        area(),
+        body()
+    ])
+
+    add([
+        rect(width(), 48),
+        pos(0, height() - 48),
+        outline(4),
+        area(),
+        body({ isStatic: true }),
+        color(127, 200, 255),
+    ])
+
+    onKeyPress("space", () => {
+        if (bean.isGrounded()) {
+            bean.jump();
+        }
+    });
+
+    setGravity(1500)
+
+    // add([
+    //     rect(42, 64),
+    //     area(),
+    //     outline(4),
+    //     pos(width(), height() - 48),
+    //     anchor("botleft"),
+    //     color(255, 180, 255),
+    //     move(LEFT, 240),
+    //     "tree", // add a tag here
+    // ]);
+
+    // loop(1.5, () => {
+    //     // add tree
+    //     add([
+    //         rect(42, rand(24, 64)),
+    //         area(),
+    //         outline(4),
+    //         pos(width(), height() - 48),
+    //         anchor("botleft"),
+    //         color(255, 180, 255),
+    //         move(LEFT, 240),
+    //         "tree", // add a tag here
+    //     ]);
+    // });
+
+    function spawnTree() {
+        add([
+            rect(42, rand(24, 64)),
+            area(),
+            outline(4),
+            pos(width(), height() - 48),
+            anchor("botleft"),
+            color(255, 180, 255),
+            move(LEFT, 240),
+            "tree", 
+        ]);
+        wait(rand(1, 2.3), () => {
+            spawnTree();
+        });
+    }
+
+    spawnTree();
+    bean.onCollide("tree", () => {
+        addKaboom(bean.pos);
+        shake();
+    });
+    
+</script>
