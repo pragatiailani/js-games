@@ -1,0 +1,156 @@
+<script type="module">
+    import kaboom from "https://unpkg.com/kaboom@3000.0.1/dist/kaboom.mjs";
+
+    const FLOOR_HEIGHT = 48;
+    const JUMP_FORCE = 800;
+    const SPEED = 480;
+
+    // initialize context
+    kaboom({
+        backgroundAudio: true,
+        background: [141, 183, 255],
+    });
+
+    // loadSprite("background", "/bg/mr bean bg.png");
+
+    // load assets
+    loadSound("bgm", "/sounds/smiley.mp3");
+    loadSprite("bean", "/sprites/smiley.png");
+
+    const music = play("bgm", {
+        loop: true,
+    });
+
+    function spin(speed = 1200) {
+        let spinning = false
+        return {
+            require: [ "rotate" ],
+            update() {
+                if (!spinning) {
+                    return
+                }
+                this.angle -= speed * dt()
+                if (this.angle <= -360) {
+                    spinning = false
+                    this.angle = 0
+                }
+            },
+            spin() {
+                spinning = true
+            },
+        }
+    }
+
+    scene("game", () => {
+        // define gravity
+        setGravity(1600);
+
+        // add a game object to screen
+        const player = add([
+            // list of components
+            sprite("bean"),
+            pos(80, 40),
+            scale(0.2),
+            area(),
+            anchor("center"),
+            // body(),
+            body({ jumpForce: JUMP_FORCE }),
+            doubleJump(),
+            rotate(0),
+            spin(),
+        ]);
+
+        // floor
+        add([
+            rect(width(), FLOOR_HEIGHT),
+            outline(4),
+            pos(0, height()),
+            anchor("botleft"),
+            area(),
+            body({ isStatic: true }),
+            color(127, 200, 255),
+        ]);
+
+        // function jump() {
+        //     if (player.isGrounded()) {
+        //         player.jump(JUMP_FORCE);
+        //     }
+        // }
+
+        // // jump when user press space
+        // onKeyPress("space", jump);
+        // onClick(jump);
+        
+        player.onDoubleJump(() => {
+            player.spin()
+        })
+
+        onKeyPress("space", () => {
+            player.doubleJump()
+        })
+
+
+
+        function spawnTree() {
+            // add tree obj
+            add([
+                rect(42, rand(80, 185)),
+                area(),
+                outline(4),
+                pos(width(), height() - FLOOR_HEIGHT),
+                anchor("botleft"),
+                color(255, 180, 255),
+                move(LEFT, SPEED),
+                "tree",
+            ]);
+
+            // wait a random amount of time to spawn next tree
+            wait(rand(0.8, 2.3), spawnTree);
+        }
+
+        // start spawning trees
+        spawnTree();
+
+        // lose if player collides with any game obj with tag "tree"
+        player.onCollide("tree", () => {
+            // go to "lose" scene and pass the score
+            go("lose", score);
+            burp();
+            addKaboom(player.pos);
+        });
+
+        // keep track of score
+        let score = 0;
+
+        const scoreLabel = add([text(score), pos(24, 24)]);
+
+        // increment score every frame
+        onUpdate(() => {
+            score++;
+            scoreLabel.text = score;
+        });
+    });
+
+    scene("lose", (score) => {
+        add([
+            sprite("bean"),
+            pos(width() / 2, height() / 2 - 80),
+            scale(2),
+            anchor("center"),
+        ]);
+
+        // display score
+        add([
+            text(score),
+            pos(width() / 2, height() / 2 + 80),
+            scale(2),
+            anchor("center"),
+        ]);
+
+        // go back to game with space is pressed
+        onKeyPress("space", () => go("game"));
+        onClick(() => go("game"));
+    });
+
+    go("game");
+</script>
